@@ -1,0 +1,405 @@
+import { useRouter } from "expo-router";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { useState } from "react";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db } from "../constants/firebaseConfig";
+
+export default function Register() {
+  const router = useRouter();
+
+  const [showPopup, setShowPopup] = useState(false);
+  const [showRole, setShowRole] = useState(false);
+  const [showWilaya, setShowWilaya] = useState(false);
+  const [acceptPolicy, setAcceptPolicy] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
+    nom: "",
+    prenom: "",
+    email: "",
+    phone: "",
+    password: "",
+    wilaya: "",
+    commune: "",
+    adresse: "",
+    role: "agriculteur",
+    raisonSociale: "",
+  });
+
+  const roles = [
+    { label: "Agriculteur", value: "agriculteur" },
+    { label: "Revendeur", value: "revendeur" },
+    { label: "Distributeur", value: "distributeur" },
+    { label: "Fournisseur", value: "fournisseur" },
+  ];
+
+  const wilayas = [
+    { label: "01 - Adrar", value: "01" },
+    { label: "02 - Chlef", value: "02" },
+    { label: "03 - Laghouat", value: "03" },
+    { label: "04 - Oum El Bouaghi", value: "04" },
+    { label: "05 - Batna", value: "05" },
+    { label: "06 - Béjaïa", value: "06" },
+    { label: "07 - Biskra", value: "07" },
+    { label: "08 - Béchar", value: "08" },
+    { label: "09 - Blida", value: "09" },
+    { label: "10 - Bouira", value: "10" },
+    { label: "11 - Tamanrasset", value: "11" },
+    { label: "12 - Tébessa", value: "12" },
+    { label: "13 - Tlemcen", value: "13" },
+    { label: "14 - Tiaret", value: "14" },
+    { label: "15 - Tizi Ouzou", value: "15" },
+    { label: "16 - Alger", value: "16" },
+    { label: "17 - Djelfa", value: "17" },
+    { label: "18 - Jijel", value: "18" },
+    { label: "19 - Sétif", value: "19" },
+    { label: "20 - Saïda", value: "20" },
+    { label: "21 - Skikda", value: "21" },
+    { label: "22 - Sidi Bel Abbès", value: "22" },
+    { label: "23 - Annaba", value: "23" },
+    { label: "24 - Guelma", value: "24" },
+    { label: "25 - Constantine", value: "25" },
+    { label: "26 - Médéa", value: "26" },
+    { label: "27 - Mostaganem", value: "27" },
+    { label: "28 - M'Sila", value: "28" },
+    { label: "29 - Mascara", value: "29" },
+    { label: "30 - Ouargla", value: "30" },
+    { label: "31 - Oran", value: "31" },
+    { label: "32 - El Bayadh", value: "32" },
+    { label: "33 - Illizi", value: "33" },
+    { label: "34 - Bordj Bou Arreridj", value: "34" },
+    { label: "35 - Boumerdès", value: "35" },
+    { label: "36 - El Tarf", value: "36" },
+    { label: "37 - Tindouf", value: "37" },
+    { label: "38 - Tissemsilt", value: "38" },
+    { label: "39 - El Oued", value: "39" },
+    { label: "40 - Khenchela", value: "40" },
+    { label: "41 - Souk Ahras", value: "41" },
+    { label: "42 - Tipaza", value: "42" },
+    { label: "43 - Mila", value: "43" },
+    { label: "44 - Aïn Defla", value: "44" },
+    { label: "45 - Naâma", value: "45" },
+    { label: "46 - Aïn Témouchent", value: "46" },
+    { label: "47 - Ghardaïa", value: "47" },
+    { label: "48 - Relizane", value: "48" },
+    { label: "49 - El M'Ghair", value: "49" },
+    { label: "50 - El Meniaa", value: "50" },
+    { label: "51 - Ouled Djellal", value: "51" },
+    { label: "52 - Bordj Badji Mokhtar", value: "52" },
+    { label: "53 - Béni Abbès", value: "53" },
+    { label: "54 - Timimoun", value: "54" },
+    { label: "55 - Touggourt", value: "55" },
+    { label: "56 - Djanet", value: "56" },
+    { label: "57 - In Salah", value: "57" },
+    { label: "58 - In Guezzam", value: "58" },
+  ];
+
+  const handleRegister = async () => {
+    const isEmpty = (v: string) => !v || v.trim() === "";
+
+    if (
+      isEmpty(form.prenom) ||
+      isEmpty(form.nom) ||
+      isEmpty(form.email) ||
+      isEmpty(form.phone) ||
+      isEmpty(form.password) ||
+      isEmpty(form.wilaya) ||
+      isEmpty(form.commune) ||
+      isEmpty(form.adresse)
+    ) {
+      Alert.alert(
+        "Erreur",
+        "Veuillez remplir tous les champs obligatoires (*)",
+      );
+      return;
+    }
+
+    if (!acceptPolicy) {
+      Alert.alert("Attention", "Veuillez accepter la politique");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email.trim(),
+        form.password,
+      );
+
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        nom: form.nom.trim(),
+        prenom: form.prenom.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        wilaya: form.wilaya,
+        commune: form.commune.trim(),
+        adresse: form.adresse.trim(),
+        role: form.role,
+        raisonSociale: form.raisonSociale?.trim() || "",
+        createdAt: new Date().toISOString(),
+      });
+
+      setShowPopup(true);
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const SelectBox = ({ label, value, placeholder, onPress }: any) => (
+    <View>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity style={styles.input} onPress={onPress}>
+        <Text style={{ color: value ? "#fff" : "#6b7280" }}>
+          {value || placeholder}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* HEADER */}
+          <View style={styles.headerBox}>
+            <Text style={styles.logoText}>PhytoCycle</Text>
+            <Text style={styles.subtitle}>Créer un compte 🌱</Text>
+          </View>
+
+          {/* CARD */}
+          <View style={styles.card}>
+            <SelectBox
+              label="Rôle *"
+              value={roles.find((r) => r.value === form.role)?.label}
+              placeholder="Sélectionnez"
+              onPress={() => setShowRole(true)}
+            />
+
+            <Text style={styles.label}>Raison sociale</Text>
+            <TextInput
+              style={styles.input}
+              value={form.raisonSociale}
+              onChangeText={(t) => setForm({ ...form, raisonSociale: t })}
+            />
+
+            <Text style={styles.label}>Prénom *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.prenom}
+              onChangeText={(t) => setForm({ ...form, prenom: t })}
+            />
+
+            <Text style={styles.label}>Nom *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.nom}
+              onChangeText={(t) => setForm({ ...form, nom: t })}
+            />
+
+            <Text style={styles.label}>Téléphone *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.phone}
+              onChangeText={(t) => setForm({ ...form, phone: t })}
+            />
+
+            <Text style={styles.label}>Email *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.email}
+              onChangeText={(t) => setForm({ ...form, email: t })}
+            />
+
+            <Text style={styles.label}>Mot de passe *</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              value={form.password}
+              onChangeText={(t) => setForm({ ...form, password: t })}
+            />
+
+            <SelectBox
+              label="Wilaya *"
+              value={wilayas.find((w) => w.value === form.wilaya)?.label}
+              placeholder="Choisir"
+              onPress={() => setShowWilaya(true)}
+            />
+
+            <Text style={styles.label}>Commune *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.commune}
+              onChangeText={(t) => setForm({ ...form, commune: t })}
+            />
+
+            <Text style={styles.label}>Adresse *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.adresse}
+              onChangeText={(t) => setForm({ ...form, adresse: t })}
+            />
+
+            <View style={styles.policyCard}>
+              <Switch value={acceptPolicy} onValueChange={setAcceptPolicy} />
+              <Text style={styles.policyText}>J'accepte la politique</Text>
+            </View>
+
+            <TouchableOpacity style={styles.button} onPress={handleRegister}>
+              <Text style={styles.buttonText}>
+                {loading ? "Chargement..." : "S'inscrire"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Déjà un compte ?</Text>
+            <TouchableOpacity onPress={() => router.push("/")}>
+              <Text style={styles.link}>Se connecter</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* MODALS */}
+          <Modal visible={showRole} transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                {roles.map((r) => (
+                  <TouchableOpacity
+                    key={r.value}
+                    onPress={() => {
+                      setForm({ ...form, role: r.value });
+                      setShowRole(false);
+                    }}
+                  >
+                    <Text style={styles.option}>{r.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={showWilaya} transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                {wilayas.map((w) => (
+                  <TouchableOpacity
+                    key={w.value}
+                    onPress={() => {
+                      setForm({ ...form, wilaya: w.value });
+                      setShowWilaya(false);
+                    }}
+                  >
+                    <Text style={styles.option}>{w.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={showPopup} transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={{ color: "#2ecc71", fontWeight: "bold" }}>
+                  Inscription réussie ✅
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowPopup(false);
+                    router.replace("/");
+                  }}
+                >
+                  <Text style={styles.link}>Continuer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+/* STYLES */
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#0b1f16" },
+  scrollContent: { flexGrow: 1, padding: 20 },
+
+  headerBox: { alignItems: "center", marginBottom: 30 },
+  logoText: { color: "#2ecc71", fontSize: 32, fontWeight: "900" },
+  subtitle: { color: "#94a3b8" },
+
+  card: {
+    backgroundColor: "#0f2a1e",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#1e3a2f",
+  },
+
+  label: { color: "#cbd5f5", marginTop: 10 },
+
+  input: {
+    backgroundColor: "#0b1f16",
+    borderWidth: 1,
+    borderColor: "#1e3a2f",
+    borderRadius: 12,
+    padding: 14,
+    color: "#fff",
+    marginBottom: 10,
+  },
+
+  button: {
+    backgroundColor: "#2ecc71",
+    padding: 15,
+    borderRadius: 14,
+    marginTop: 15,
+  },
+
+  buttonText: { color: "#fff", textAlign: "center", fontWeight: "bold" },
+
+  footer: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
+  footerText: { color: "#94a3b8" },
+  link: { color: "#2ecc71", marginLeft: 5 },
+
+  policyCard: { flexDirection: "row", alignItems: "center", gap: 10 },
+
+  policyText: { color: "#cbd5f5", fontSize: 12 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "#00000088",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  modalContent: {
+    backgroundColor: "#0f2a1e",
+    padding: 20,
+    borderRadius: 10,
+  },
+
+  option: { color: "#fff", padding: 10 },
+});
